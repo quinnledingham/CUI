@@ -1398,7 +1398,7 @@ void cui_scroll_reveal(cui_ctx *ui, const char *scroll_id, cui_id row) {
 /* Split view                                                               */
 /* ------------------------------------------------------------------------ */
 
-struct cui_split_build { cui_id id; float *ratio; bool vertical; int container; float min1, min2; struct cui_split_build *prev; float hover; };
+struct cui_split_build { cui_id id; float *ratio; bool vertical, rtl; int container; float min1, min2, avail; struct cui_split_build *prev; float hover; };
 typedef struct { float hover; bool rtl; } cui__split_state;
 
 static void cui__paint_split(cui_ctx *ui, cui_node *n, void *data) {
@@ -1439,6 +1439,7 @@ void cui_split_begin(cui_ctx *ui, const char *id_str, float *ratio, const cui_sp
     if (r.hovered || r.active) cui__set_cursor(ui, o->vertical ? CUI_CURSOR_RESIZE_NS : CUI_CURSOR_RESIZE_EW);
     cui__tween(ui, &st->hover, (r.hovered || r.active) ? 1.0f : 0.0f, CUI__T_HOVER);
     b->hover = st->hover;
+    b->rtl = st->rtl; b->avail = available;
     int i = cui__node_new(ui, id);
     cui_node *n = &ui->nodes[i];
     n->dir = o->vertical ? CUI_COLUMN : CUI_ROW;
@@ -1482,8 +1483,14 @@ void cui_split_next(cui_ctx *ui) {
     ui->nodes[line].bg = CUI_C(ui, BORDER);
     cui_rect lr = cui__prev_rect(ui, lid), cr = cui__prev_rect(ui, b->id);
     if (lr.w > 0 && lr.h > 0) {
-        int h = b->vertical ? cui__absolute(ui, b->id ^ 0x77u, lr.x - cr.x, lr.y - cr.y - 4, lr.w, 9)
-                            : cui__absolute(ui, b->id ^ 0x77u, lr.x - cr.x - 4, lr.y - cr.y, 9, lr.h);
+        /* Place the grab strip from this frame's ratio, not from last frame's line rect: while dragging, the
+           panes have already moved, and a strip taken from the old rect paints its hover line one frame behind
+           the divider (a ghost line trailing it). Only the cross axis comes from the old rect. */
+        float rr = cui__clampf(*b->ratio, 0.02f, 0.98f);
+        float pos = cui__clampf(rr * b->avail, b->min1, CUI_MAX(b->min1, b->avail - b->min2));
+        float along = b->vertical || !b->rtl ? pos : cr.w - 1 - pos;
+        int h = b->vertical ? cui__absolute(ui, b->id ^ 0x77u, lr.x - cr.x, along - 4, lr.w, 9)
+                            : cui__absolute(ui, b->id ^ 0x77u, along - 4, lr.y - cr.y, 9, lr.h);
         cui__mark_interactive(ui, h, 0);
         cui__handle_paint *hp = cui__frame_alloc(ui, sizeof *hp);
         hp->hover = b->hover; hp->vertical = b->vertical;
