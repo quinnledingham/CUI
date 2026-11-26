@@ -92,7 +92,7 @@ bool cui__popup_begin(cui_ctx *ui, cui_id id, cui_id anchor, int placement, floa
         if (top && cui_key_pressed(ui, CUI_KEY_ESCAPE)) { p->open = false; ui->kpressed[CUI_KEY_ESCAPE] = 0; }
         if (ui->mpressed[0] || ui->mpressed[1]) {
             bool inside = ui->hot_layer == id || cui__layer_is_open_popup_after(ui, ui->hot_layer, p);
-            bool on_anchor = anchor && ui->hot == anchor;
+            bool on_anchor = !p->at_mouse && anchor && ui->hot == anchor;   /* a context menu at the mouse ignores its anchor */
             if (!inside && !on_anchor && ui->frame > p->opened_frame) p->open = false;
         }
     }
@@ -117,7 +117,7 @@ bool cui__popup_begin(cui_ctx *ui, cui_id id, cui_id anchor, int placement, floa
     n->gap = gap;
     n->flags |= CUI_NF_HIT_OPAQUE;
     if (width > 0) n->w = CUI_PX(width);
-    else if (anchor && cui__has_prev_rect(ui, anchor)) n->min_w = cui__prev_rect(ui, anchor).w;
+    else if (!p->at_mouse && anchor && cui__has_prev_rect(ui, anchor)) n->min_w = cui__prev_rect(ui, anchor).w;
     n->min_w = CUI_MAX(n->min_w, menu ? 180.0f : 0.0f);
     n->max_h = 420;
     n->opacity = t;
