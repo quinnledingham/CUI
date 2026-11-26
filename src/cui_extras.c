@@ -696,6 +696,8 @@ typedef struct {
     bool pending;           /* pressed, waiting to cross the drag threshold */
     int press_pos;
     cui_spring lift;        /* 0..1 dragged look */
+    bool settling;          /* dropped row still gliding into its slot keeps the lifted look */
+    int settle_item;
     bool init;
 } cui__reorder_state;
 
@@ -769,6 +771,7 @@ void cui_reorder_begin(cui_ctx *ui, const char *id_str, int *order, int count) {
                 /* the dropped row starts where the pointer left it */
                 cui__reorder_item_state *ds = cui_state(ui, cui__reorder_item_id(b, item) ^ 0x1u, sizeof *ds);
                 ds->y.x = (ui->my - st->grab) - b->slot_top[to];
+                st->settling = true; st->settle_item = item;
             } else {
                 cui__reorder_item_state *ds = cui_state(ui, cui__reorder_item_id(b, order[from]) ^ 0x1u, sizeof *ds);
                 ds->y.x = (ui->my - st->grab) - b->slot_top[from];
@@ -777,7 +780,7 @@ void cui_reorder_begin(cui_ctx *ui, const char *id_str, int *order, int count) {
         }
     }
     if (st->from >= 0 && !ui->mdown[0]) st->from = -1;   /* released without layout: just end the drag */
-    cui__spring(ui, &st->lift, st->from >= 0 ? 1.0f : 0.0f, CUI_SPRING_SNAPPY);
+    cui__spring(ui, &st->lift, (st->from >= 0 || st->settling) ? 1.0f : 0.0f, CUI_SPRING_SNAPPY);
     int col = cui__node_new(ui, b->id);
     ui->nodes[col].gap = 6;
     ui->nodes[col].w = CUI_FILL;
@@ -802,6 +805,9 @@ void cui_reorder_item_begin(cui_ctx *ui, int pos) {
     if (r.hovered && ui->mpressed[0]) { st->pending = true; st->press_y = ui->my; st->press_pos = pos; }
     cui__reorder_item_state *is = cui_state(ui, iid ^ 0x1u, sizeof *is);
     bool dragged = st->from == pos;
+    bool settle = st->settling && st->from < 0 && item == st->settle_item;
+    if (settle && fabsf(is->y.x) < 0.5f && fabsf(is->y.v) < 1.0f) { st->settling = false; settle = false; }
+    if (settle) ui->animating = true;
     float target = 0;
     if (st->from >= 0 && !dragged && b->have_rects) {
         float shift = b->slot_h[st->from] + (b->count > 1 ? b->slot_top[1] - (b->slot_top[0] + b->slot_h[0]) : 0);
@@ -819,7 +825,7 @@ void cui_reorder_item_begin(cui_ctx *ui, int pos) {
     nd->border = 1;
     nd->border_color = CUI_C(ui, BORDER);
     nd->ty = is->y.x;
-    if (dragged) {
+    if (dragged || settle) {
         nd->elevation = CUI_ELEVATION_FLOATING;
         nd->elevation_alpha = st->lift.x;
         nd->scale = 1.0f + 0.015f * st->lift.x;
