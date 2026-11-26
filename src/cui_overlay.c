@@ -129,6 +129,7 @@ bool cui__popup_begin(cui_ctx *ui, cui_id id, cui_id anchor, int placement, floa
     b->id = id;
     b->menu = menu;
     b->item_index = 0;
+    b->scroll = 0;
     b->disabled_pushed = !p->open;
     if (!p->open) cui_push_disabled(ui, true);
     cui_push_id_int(ui, (int)id);
@@ -144,9 +145,27 @@ bool cui__popup_begin(cui_ctx *ui, cui_id id, cui_id anchor, int placement, floa
     return true;
 }
 
+/* Plain menus (cui_menu, cui_context_menu, the menu bar's menus) can hold more items than the
+   420 px popup cap: they grow to the window's height, and their items scroll when the window
+   is shorter than the menu. Other popups keep the cap and their own scroll areas. */
+bool cui__menu_scroll_begin(cui_ctx *ui, bool shown) {
+    if (!shown || ui->pb_depth <= 0 || ui->pb_depth > 16) return shown;
+    cui__popup_build *b = &ui->pb_stack[ui->pb_depth - 1];
+    ui->nodes[cui__current(ui)].max_h = 1e9f;   /* the popup root; layout still clamps it to the window */
+    cui_box sb;
+    memset(&sb, 0, sizeof sb);
+    sb.height = CUI_FIT;
+    b->scroll = cui_make_id(ui, "#menu-scroll");
+    cui__scroll_begin_ex(ui, b->scroll, &sb, false);
+    ui->nodes[cui__current(ui)].h = CUI_FIT;
+    ui->nodes[cui__current(ui)].min_h = 0;
+    return true;
+}
+
 void cui__popup_end(cui_ctx *ui) {
     if (ui->pb_depth <= 0) return;
     cui__popup_build *b = &ui->pb_stack[--ui->pb_depth];
+    if (b->scroll) cui__scroll_end_ex(ui);
     cui_pop_id(ui);
     if (b->disabled_pushed) cui_pop_disabled(ui);
     cui__float_end(ui);
@@ -201,7 +220,7 @@ bool cui_menu_begin(cui_ctx *ui, const char *label, const cui_menu_opts *o) {
         p->at_mouse = false;
     }
     if (p && !p->open && ui->focus == anchor && ui->focus_visible && cui_key_pressed(ui, CUI_KEY_DOWN)) cui__popup_set(ui, pid, true);
-    return cui__popup_begin(ui, pid, anchor, o->placement, o->width, 6, 0, true);
+    return cui__menu_scroll_begin(ui, cui__popup_begin(ui, pid, anchor, o->placement, o->width, 6, 0, true));
 }
 
 void cui_menu_end(cui_ctx *ui) { cui__popup_end(ui); }
@@ -216,7 +235,7 @@ bool cui_context_menu_begin(cui_ctx *ui, const char *id) {
         if (p) { p->at_mouse = true; p->mouse.x = ui->mx; p->mouse.y = ui->my; }
     }
     if (!cui__popup_get(ui, pid, false)) return false;
-    return cui__popup_begin(ui, pid, anchor, CUI_PLACE_BOTTOM_START, 0, 6, 0, true);
+    return cui__menu_scroll_begin(ui, cui__popup_begin(ui, pid, anchor, CUI_PLACE_BOTTOM_START, 0, 6, 0, true));
 }
 
 void cui_context_menu_end(cui_ctx *ui) { cui__popup_end(ui); }
@@ -238,6 +257,7 @@ bool cui_menu_item_ex(cui_ctx *ui, const char *label, const cui_menu_item_opts *
     cui_pop_disabled(ui);
     if (r.hovered && nav && (ui->mx != ui->pmx || ui->my != ui->pmy || !nav->keyboard)) { nav->highlight = index; nav->keyboard = false; }
     bool hl = nav && nav->highlight == index && !disabled;
+    if (hl && nav->keyboard && b && b->scroll) cui__scroll_reveal(ui, b->scroll, id);   /* arrow keys keep the item in view */
     cui__item_state *st = cui_state(ui, id, sizeof *st);
     cui__tween(ui, &st->hover, hl ? 1.0f : 0.0f, CUI__T_HIGHLIGHT);
     int i = cui__node_new(ui, id);

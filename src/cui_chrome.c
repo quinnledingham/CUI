@@ -323,7 +323,7 @@ bool cui_menu_bar_menu_begin(cui_ctx *ui, const char *label, const cui_menu_bar_
     cui_popup *p = cui__popup_get(ui, pid, false);
     if (p && p->open != open) cui__popup_set(ui, pid, open);
     bool was_open = p && p->open;
-    bool shown = cui__popup_begin(ui, pid, tid, CUI_PLACE_BOTTOM_START, o->width, 6, 0, true);
+    bool shown = cui__menu_scroll_begin(ui, cui__popup_begin(ui, pid, tid, CUI_PLACE_BOTTOM_START, o->width, 6, 0, true));
     if (was_open && !p->open) cui__bar_menu_closed(ui, st, k);   /* Esc or a click elsewhere */
     st->cur = k;
     st->cur_was_open = p && p->open;

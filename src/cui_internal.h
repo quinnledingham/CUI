@@ -487,7 +487,9 @@ typedef struct cui_toast_item {
 } cui_toast_item;
 
 /* Scope stacks used while building one frame (kept per context). */
-typedef struct cui__popup_build { cui_id id; bool disabled_pushed; bool menu; int item_index; } cui__popup_build;
+typedef struct cui__popup_build { cui_id id; bool disabled_pushed; bool menu; int item_index; cui_id scroll; } cui__popup_build;
+/* a plain menu's items in a scroll area, not held to the popup height cap (cui_overlay.c) */
+bool cui__menu_scroll_begin(cui_ctx *ui, bool shown);
 typedef struct cui__modal_build { cui_id id; bool disabled_pushed; } cui__modal_build;
 typedef struct cui__vlist_build { int count; float row_h; int first; } cui__vlist_build;
 
