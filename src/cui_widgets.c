@@ -1466,9 +1466,9 @@ static void cui__paint_split_handle(cui_ctx *ui, cui_node *n, void *data) {
     cui_rect r = n->rect;
     if (p->hover > 0.01f) {
         cui_rect line = p->vertical ? (cui_rect){ r.x, r.y + r.h * 0.5f - 0.5f, r.w, 1 } : (cui_rect){ r.x + r.w * 0.5f - 0.5f, r.y, 1, r.h };
-        cui_draw_rect(ui, line, CUI_CORNERS(0), cui_alpha(CUI_C(ui, ACCENT), p->hover));
+        cui_draw_rect(ui, line, CUI_CORNERS(0), cui_alpha(CUI_C(ui, ACCENT), p->hover * 0.35f));
         cui_rect g = p->vertical ? (cui_rect){ r.x + r.w * 0.5f - 16, r.y + r.h * 0.5f - 2, 32, 4 } : (cui_rect){ r.x + r.w * 0.5f - 2, r.y + r.h * 0.5f - 16, 4, 32 };
-        cui_draw_rect(ui, g, CUI_CORNERS(2), cui_alpha(CUI_C(ui, ACCENT), p->hover));
+        cui_draw_rect(ui, g, CUI_CORNERS(2), cui_alpha(CUI_C(ui, ACCENT), p->hover * 0.5f));
     }
 }
 
@@ -1480,7 +1480,7 @@ void cui_split_next(cui_ctx *ui) {
        the grab area is a wider strip laid over it */
     cui_id lid = b->id ^ 0x78u;
     int line = cui__leaf(ui, lid, b->vertical ? CUI_FILL : CUI_PX(1), b->vertical ? CUI_PX(1) : CUI_FILL);
-    ui->nodes[line].bg = CUI_C(ui, BORDER);
+    ui->nodes[line].bg = cui_mix(CUI_C(ui, BORDER), CUI_C(ui, ACCENT), 0.25f);
     cui_rect lr = cui__prev_rect(ui, lid), cr = cui__prev_rect(ui, b->id);
     if (lr.w > 0 && lr.h > 0) {
         /* Place the grab strip from this frame's ratio, not from last frame's line rect: while dragging, the
