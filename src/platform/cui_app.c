@@ -355,6 +355,11 @@ void cui__app_live_frame(cui_app *app) {
     app->in_live_resize = false;
 }
 
+void cui_app_set_live_frame(cui_app *app, void (*frame)(cui_ctx *ui, void *user), void *user) {
+    app = cui__app_or_current(app);
+    if (app) { app->frame_cb = frame; app->frame_user = user; }
+}
+
 int cui_app_run(const cui_app_desc *desc, void (*frame)(cui_ctx *ui, void *user), void *user) {
     cui_app *app = cui_app_create(desc);
     if (!app) return 1;

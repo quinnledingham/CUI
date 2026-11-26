@@ -114,6 +114,8 @@ CUI_API void cui_app_quit(cui_app *app);
 CUI_API void cui_app_set_title(cui_app *app, const char *title);
 /* The window's size in logical points (the same units as cui_app_desc.width). */
 CUI_API void cui_app_set_size(cui_app *app, int width, int height);
+/* Sets the frame callback the Win32 resize loop calls, for apps that drive cui_app_frame themselves. */
+CUI_API void cui_app_set_live_frame(cui_app *app, void (*frame)(cui_ctx *ui, void *user), void *user);
 CUI_API cui_vec2 cui_app_size(cui_app *app);
 /* Maximizes the window on its display, as the title bar's maximize button does. NULL means the
  * running app, so a cui_app_run callback can call it on its first frame; with the loop form it is
